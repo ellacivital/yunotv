@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { action, Enabled, URL, Username, Password, RootPath, ScanInterval } = body;
+    const { action, Enabled, URL, Username, Password, RootPath, OfflineDownloadPath, ScanInterval } = body;
 
     const authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
           Username: Username || '',
           Password: Password || '',
           RootPath: RootPath || '/',
+          OfflineDownloadPath: OfflineDownloadPath || '/',
           LastRefreshTime: adminConfig.OpenListConfig?.LastRefreshTime,
           ResourceCount: adminConfig.OpenListConfig?.ResourceCount,
           ScanInterval: 0,
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
         Username,
         Password,
         RootPath: RootPath || '/',
+        OfflineDownloadPath: OfflineDownloadPath || '/',
         LastRefreshTime: adminConfig.OpenListConfig?.LastRefreshTime,
         ResourceCount: adminConfig.OpenListConfig?.ResourceCount,
         ScanInterval: scanInterval,

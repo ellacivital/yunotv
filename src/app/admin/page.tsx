@@ -2762,6 +2762,7 @@ const OpenListConfigComponent = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rootPath, setRootPath] = useState('/');
+  const [offlineDownloadPath, setOfflineDownloadPath] = useState('/');
   const [scanInterval, setScanInterval] = useState(0);
   const [videos, setVideos] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -2780,6 +2781,7 @@ const OpenListConfigComponent = ({
       setUsername(config.OpenListConfig.Username || '');
       setPassword(config.OpenListConfig.Password || '');
       setRootPath(config.OpenListConfig.RootPath || '/');
+      setOfflineDownloadPath(config.OpenListConfig.OfflineDownloadPath || '/');
       setScanInterval(config.OpenListConfig.ScanInterval || 0);
     }
   }, [config]);
@@ -2819,6 +2821,7 @@ const OpenListConfigComponent = ({
             Username: username,
             Password: password,
             RootPath: rootPath,
+            OfflineDownloadPath: offlineDownloadPath,
             ScanInterval: scanInterval,
           }),
         });
@@ -3108,6 +3111,23 @@ const OpenListConfigComponent = ({
           />
           <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
             OpenList 中的视频文件夹路径，默认为根目录 /
+          </p>
+        </div>
+
+        <div>
+          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+            离线下载目录
+          </label>
+          <input
+            type='text'
+            value={offlineDownloadPath}
+            onChange={(e) => setOfflineDownloadPath(e.target.value)}
+            disabled={!enabled}
+            placeholder='/'
+            className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed'
+          />
+          <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+            动漫磁力等离线下载任务的保存目录，默认为根目录 /
           </p>
         </div>
 
