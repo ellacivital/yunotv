@@ -1975,48 +1975,13 @@ function PlayPageClient() {
               },
             });
             artPlayerRef.current.setting.update({
-              name: '设置片头',
-              html: '设置片头',
-              icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="5" cy="12" r="2" fill="#ffffff"/><path d="M9 12L17 12" stroke="#ffffff" stroke-width="2"/><path d="M17 6L17 18" stroke="#ffffff" stroke-width="2"/></svg>',
+              name: '跳过配置',
+              html: '跳过配置',
+              icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="5" cy="12" r="2" fill="#ffffff"/><path d="M9 12L15 12" stroke="#ffffff" stroke-width="2"/><circle cx="19" cy="12" r="2" fill="#ffffff"/></svg>',
               tooltip:
-                skipConfigRef.current.intro_time === 0
-                  ? '设置片头时间'
-                  : `${formatTime(skipConfigRef.current.intro_time)}`,
-              onClick: function () {
-                const currentTime = artPlayerRef.current?.currentTime || 0;
-                if (currentTime > 0) {
-                  const newConfig = {
-                    ...skipConfigRef.current,
-                    intro_time: currentTime,
-                  };
-                  handleSkipConfigChange(newConfig);
-                  return `${formatTime(currentTime)}`;
-                }
-              },
-            });
-            artPlayerRef.current.setting.update({
-              name: '设置片尾',
-              html: '设置片尾',
-              icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 6L7 18" stroke="#ffffff" stroke-width="2"/><path d="M7 12L15 12" stroke="#ffffff" stroke-width="2"/><circle cx="19" cy="12" r="2" fill="#ffffff"/></svg>',
-              tooltip:
-                skipConfigRef.current.outro_time >= 0
-                  ? '设置片尾时间'
-                  : `-${formatTime(-skipConfigRef.current.outro_time)}`,
-              onClick: function () {
-                const outroTime =
-                  -(
-                    artPlayerRef.current?.duration -
-                    artPlayerRef.current?.currentTime
-                  ) || 0;
-                if (outroTime < 0) {
-                  const newConfig = {
-                    ...skipConfigRef.current,
-                    outro_time: outroTime,
-                  };
-                  handleSkipConfigChange(newConfig);
-                  return `-${formatTime(-outroTime)}`;
-                }
-              },
+                skipConfigRef.current.intro_time === 0 && skipConfigRef.current.outro_time === 0
+                  ? '设置跳过配置'
+                  : `片头: ${formatTime(skipConfigRef.current.intro_time)} | 片尾: ${formatTime(Math.abs(skipConfigRef.current.outro_time))}`,
             });
           } catch (settingErr) {
             console.warn('更新播放器设置失败:', settingErr);
@@ -3918,63 +3883,166 @@ function PlayPageClient() {
             },
           },
           {
-            html: '删除跳过配置',
-            onClick: function () {
-              handleSkipConfigChange({
-                enable: false,
-                intro_time: 0,
-                outro_time: 0,
-              });
-              return '';
-            },
-          },
-          {
-            name: '设置片头',
-            html: '设置片头',
-            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="5" cy="12" r="2" fill="#ffffff"/><path d="M9 12L17 12" stroke="#ffffff" stroke-width="2"/><path d="M17 6L17 18" stroke="#ffffff" stroke-width="2"/></svg>',
+            name: '跳过配置',
+            html: '跳过配置',
+            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="5" cy="12" r="2" fill="#ffffff"/><path d="M9 12L15 12" stroke="#ffffff" stroke-width="2"/><circle cx="19" cy="12" r="2" fill="#ffffff"/></svg>',
             tooltip:
-              skipConfigRef.current.intro_time === 0
-                ? '设置片头时间'
-                : `${formatTime(skipConfigRef.current.intro_time)}`,
-            onClick: function () {
-              // 安全地获取当前播放时间，避免循环依赖
+              skipConfigRef.current.intro_time === 0 && skipConfigRef.current.outro_time === 0
+                ? '设置跳过配置'
+                : `片头: ${formatTime(skipConfigRef.current.intro_time)} | 片尾: ${formatTime(Math.abs(skipConfigRef.current.outro_time))}`,
+            onClick: async function () {
               const player = artPlayerRef.current;
-              if (player && player.currentTime) {
-                const currentTime = player.currentTime || 0;
-                if (currentTime > 0) {
+              if (player) {
+                // 如果处于全屏状态，先退出全屏
+                if (player.fullscreen) {
+                  player.fullscreen = false;
+                  // 等待全屏退出动画完成
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                }
+
+                // 使用 ArtPlayer 的 prompt 功能创建输入弹窗
+                const currentIntro = skipConfigRef.current.intro_time || 0;
+                const currentOutro = Math.abs(skipConfigRef.current.outro_time) || 0;
+
+                // 创建一个自定义的提示框
+                const container = document.createElement('div');
+                container.style.cssText = `
+                  position: fixed;
+                  top: 50%;
+                  left: 50%;
+                  transform: translate(-50%, -50%);
+                  background: rgba(0, 0, 0, 0.9);
+                  padding: 20px;
+                  border-radius: 8px;
+                  z-index: 9999;
+                  min-width: 300px;
+                  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+                `;
+
+                container.innerHTML = `
+                  <div style="color: white; margin-bottom: 15px; font-size: 16px; font-weight: bold; border-bottom: 1px solid #444; padding-bottom: 10px;">
+                    跳过配置
+                  </div>
+                  <div style="color: #aaa; font-size: 13px; margin-bottom: 15px; line-height: 1.5;">
+                    设置片头片尾跳过时间，到达时间自动跳过
+                  </div>
+                  <div style="margin-bottom: 10px;">
+                    <label style="color: white; display: block; margin-bottom: 5px; font-size: 14px; font-weight: 500;">
+                      片头时间 (秒)
+                      <span style="color: #888; font-size: 12px; font-weight: normal; margin-left: 8px;">从视频开始跳过的时长</span>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                      <input id="intro-input" type="number" min="0" step="1" value="${currentIntro}" placeholder="如: 90"
+                             style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: white; font-size: 14px;" />
+                      <button id="set-intro-btn" style="padding: 8px 12px; border-radius: 4px; border: none; background: #007bff; color: white; cursor: pointer; font-size: 14px; white-space: nowrap;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 4px;">
+                          <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2"/>
+                          <path d="M12 6v6l4 4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        当前时间
+                      </button>
+                    </div>
+                  </div>
+                  <div style="margin-bottom: 15px;">
+                    <label style="color: white; display: block; margin-bottom: 5px; font-size: 14px; font-weight: 500;">
+                      片尾时间 (秒)
+                      <span style="color: #888; font-size: 12px; font-weight: normal; margin-left: 8px;">从视频结尾向前跳过的时长</span>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                      <input id="outro-input" type="number" min="0" step="1" value="${currentOutro}" placeholder="如: 120"
+                             style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: white; font-size: 14px;" />
+                      <button id="set-outro-btn" style="padding: 8px 12px; border-radius: 4px; border: none; background: #007bff; color: white; cursor: pointer; font-size: 14px; white-space: nowrap;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 4px;">
+                          <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2"/>
+                          <path d="M12 6v6l4 4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        当前时间
+                      </button>
+                    </div>
+                  </div>
+                  <div style="background: rgba(0, 123, 255, 0.1); border-left: 3px solid #007bff; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
+                    <div style="color: #88c0ff; font-size: 12px; line-height: 1.6;">
+                      <div style="margin-bottom: 4px;">💡 <strong>提示：</strong></div>
+                      <div>• 点击"当前时间"可快速设置为播放位置</div>
+                      <div>• 片头90秒表示跳过前1分30秒</div>
+                      <div>• 片尾120秒表示跳过最后2分钟</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #444; padding-top: 15px;">
+                    <button id="cancel-btn" style="padding: 8px 16px; border-radius: 4px; border: none; background: #444; color: white; cursor: pointer; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.background='#555'" onmouseout="this.style.background='#444'">取消</button>
+                    <button id="clear-btn" style="padding: 8px 16px; border-radius: 4px; border: none; background: #d9534f; color: white; cursor: pointer; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.background='#c9302c'" onmouseout="this.style.background='#d9534f'">清除</button>
+                    <button id="confirm-btn" style="padding: 8px 16px; border-radius: 4px; border: none; background: #5cb85c; color: white; cursor: pointer; font-size: 14px; transition: background 0.2s;" onmouseover="this.style.background='#4cae4c'" onmouseout="this.style.background='#5cb85c'">确定</button>
+                  </div>
+                `;
+
+                document.body.appendChild(container);
+
+                const introInput = container.querySelector('#intro-input') as HTMLInputElement;
+                const outroInput = container.querySelector('#outro-input') as HTMLInputElement;
+                const setIntroBtn = container.querySelector('#set-intro-btn');
+                const setOutroBtn = container.querySelector('#set-outro-btn');
+                const cancelBtn = container.querySelector('#cancel-btn');
+                const clearBtn = container.querySelector('#clear-btn');
+                const confirmBtn = container.querySelector('#confirm-btn');
+
+                const cleanup = () => {
+                  document.body.removeChild(container);
+                };
+
+                // 设置片头为当前时间
+                setIntroBtn?.addEventListener('click', () => {
+                  const currentTime = player.currentTime || 0;
+                  if (currentTime > 0) {
+                    introInput.value = Math.floor(currentTime).toString();
+                  }
+                });
+
+                // 设置片尾为当前时间到结束的时长
+                setOutroBtn?.addEventListener('click', () => {
+                  if (player.duration && player.currentTime) {
+                    const outroTime = player.duration - player.currentTime;
+                    if (outroTime > 0) {
+                      outroInput.value = Math.floor(outroTime).toString();
+                    }
+                  }
+                });
+
+                cancelBtn?.addEventListener('click', cleanup);
+
+                clearBtn?.addEventListener('click', () => {
+                  handleSkipConfigChange({
+                    enable: false,
+                    intro_time: 0,
+                    outro_time: 0,
+                  });
+                  cleanup();
+                });
+
+                confirmBtn?.addEventListener('click', () => {
+                  const introTime = parseFloat(introInput.value) || 0;
+                  const outroTime = parseFloat(outroInput.value) || 0;
+
                   const newConfig = {
                     ...skipConfigRef.current,
-                    intro_time: currentTime,
+                    intro_time: introTime,
+                    outro_time: outroTime > 0 ? -outroTime : 0,
                   };
+
                   handleSkipConfigChange(newConfig);
-                  return `${formatTime(currentTime)}`;
-                }
-              }
-              return '';
-            },
-          },
-          {
-            name: '设置片尾',
-            html: '设置片尾',
-            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 6L7 18" stroke="#ffffff" stroke-width="2"/><path d="M7 12L15 12" stroke="#ffffff" stroke-width="2"/><circle cx="19" cy="12" r="2" fill="#ffffff"/></svg>',
-            tooltip:
-              skipConfigRef.current.outro_time >= 0
-                ? '设置片尾时间'
-                : `-${formatTime(-skipConfigRef.current.outro_time)}`,
-            onClick: function () {
-              // 安全地获取播放器时长和当前时间，避免循环依赖
-              const player = artPlayerRef.current;
-              if (player && player.duration && player.currentTime) {
-                const outroTime =
-                  -(player.duration - player.currentTime) || 0;
-                if (outroTime < 0) {
-                  const newConfig = {
-                    ...skipConfigRef.current,
-                    outro_time: outroTime,
-                  };
-                  handleSkipConfigChange(newConfig);
-                  return `-${formatTime(-outroTime)}`;
-                }
+                  cleanup();
+                });
+
+                // 支持 Enter 键确认
+                const handleEnter = (e: KeyboardEvent) => {
+                  if (e.key === 'Enter') {
+                    confirmBtn?.dispatchEvent(new Event('click'));
+                  } else if (e.key === 'Escape') {
+                    cancelBtn?.dispatchEvent(new Event('click'));
+                  }
+                };
+
+                introInput.addEventListener('keydown', handleEnter);
+                outroInput.addEventListener('keydown', handleEnter);
               }
               return '';
             },
