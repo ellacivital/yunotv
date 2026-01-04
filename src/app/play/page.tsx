@@ -559,6 +559,14 @@ function PlayPageClient() {
 
     console.log(`[弹幕] 剧集切换到第 ${currentEpisodeIndex + 1} 集，自动加载弹幕`);
 
+    // 立即清空当前弹幕
+    if (danmakuPluginRef.current) {
+      danmakuPluginRef.current.hide();
+      danmakuPluginRef.current.config({ danmuku: [] });
+      danmakuPluginRef.current.load();
+      setDanmakuCount(0);
+    }
+
     // 自动加载弹幕的逻辑
     const loadDanmakuForCurrentEpisode = async () => {
       const title = videoTitleRef.current;
